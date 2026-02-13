@@ -42,7 +42,8 @@ button {
   border-radius: 18px;
   background: rgba(255,255,255,0.08);
   overflow: hidden;
-  transition: transform 0.2s;
+  transition: transform 0.3s;
+  cursor: grab;
 }
 .slot:hover {
   transform: scale(1.05) rotateZ(1deg);
@@ -51,6 +52,7 @@ button {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  pointer-events: none;
 }
 .empty {
   display: flex;
@@ -72,13 +74,12 @@ button {
 </header>
 
 <div class="grid" id="grid"></div>
-<input type="file" id="file" accept="image/*" multiple>
+<input type="file" id="file" accept="image/*" multiple style="display:none">
 
 <script>
 /* ===== SUPABASE SETUP ===== */
 const SUPABASE_URL = "https://mkrkiawrvnbugzyocxqe.supabase.co";
 const SUPABASE_KEY = "sb_publishable_Fep-b-ylEk5mSI1kiaR6bQ_f2qBVR_t";
-
 const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const grid = document.getElementById("grid");
@@ -95,7 +96,6 @@ async function loadGallery() {
     .select("images")
     .eq("id", galleryId)
     .single();
-
   if (data) {
     images = data.images;
     render();
@@ -105,12 +105,30 @@ async function loadGallery() {
 /* ===== RENDER GRID ===== */
 function render() {
   grid.innerHTML = "";
-  images.forEach(src => {
+  images.forEach((src, i) => {
     const slot = document.createElement("div");
     slot.className = "slot";
+    slot.setAttribute("draggable", "true");
+    slot.dataset.index = i;
     const img = document.createElement("img");
     img.src = src;
     slot.appendChild(img);
+
+    /* DRAG EVENTS */
+    slot.ondragstart = e => e.dataTransfer.setData("text/plain", i);
+    slot.ondragover = e => e.preventDefault();
+    slot.ondrop = async e => {
+      e.preventDefault();
+      const oldIndex = e.dataTransfer.getData("text/plain");
+      const newIndex = slot.dataset.index;
+      if(oldIndex === newIndex) return;
+      [images[oldIndex], images[newIndex]] = [images[newIndex], images[oldIndex]];
+      if(galleryId){
+        await supabase.from("galleries").update({ images }).eq("id", galleryId);
+      }
+      render();
+    };
+
     grid.appendChild(slot);
   });
 
@@ -125,41 +143,37 @@ function render() {
 fileInput.onchange = async () => {
   for (const file of fileInput.files) {
     const path = `${crypto.randomUUID()}-${file.name}`;
-
-    await supabase.storage
-      .from("images")
-      .upload(path, file);
-
-    const { data } = supabase.storage
-      .from("images")
-      .getPublicUrl(path);
-
+    await supabase.storage.from("images").upload(path, file);
+    const { data } = supabase.storage.from("images").getPublicUrl(path);
     images.push(data.publicUrl);
   }
 
-  if (!galleryId) {
-    const { data } = await supabase
-      .from("galleries")
-      .insert({ images })
-      .select()
-      .single();
-
+  if(!galleryId){
+    const { data } = await supabase.from("galleries").insert({ images }).select().single();
     galleryId = data.id;
     history.replaceState({}, "", "?id=" + galleryId);
   } else {
-    await supabase
-      .from("galleries")
-      .update({ images })
-      .eq("id", galleryId);
+    await supabase.from("galleries").update({ images }).eq("id", galleryId);
   }
 
   render();
 };
 
-/* ===== COPY LINK ===== */
-document.getElementById("share").onclick = () => {
-  navigator.clipboard.writeText(location.href);
-  alert("Link copiat!");
+/* ===== COPY LINK (iPhone & fallback) ===== */
+document.getElementById("share").onclick = async () => {
+  try {
+    await navigator.clipboard.writeText(location.href);
+  } catch {
+    const textarea = document.createElement("textarea");
+    textarea.value = location.href;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textarea);
+  }
+  const btn = document.getElementById("share");
+  btn.textContent = "Link copiat ✅";
+  setTimeout(()=>btn.textContent="COPY LINK",1500);
 };
 
 /* ===== ADD BUTTON ===== */
@@ -167,7 +181,7 @@ document.getElementById("add").onclick = () => fileInput.click();
 
 /* ===== RESET BUTTON ===== */
 document.getElementById("reset").onclick = async () => {
-  if (!galleryId) return;
+  if(!galleryId) return;
   await supabase.from("galleries").delete().eq("id", galleryId);
   images = [];
   galleryId = null;
