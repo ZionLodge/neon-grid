@@ -74,12 +74,12 @@ button {
 <div class="grid" id="grid"></div>
 <input type="file" id="file" accept="image/*" multiple style="display:none">
 
-<script type="module">
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.js";
-
+<!-- UMD Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.umd.js"></script>
+<script>
 const SUPABASE_URL = "https://mkrkiawrvnbugzyocxqe.supabase.co";
 const SUPABASE_KEY = "sb_publishable_Fep-b-ylEk5mSI1kiaR6bQ_f2qBVR_t";
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const grid = document.getElementById("grid");
 const fileInput = document.getElementById("file");
