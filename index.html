@@ -160,9 +160,7 @@ fileInput.onchange = async () => {
   render();
 };
 
-document.getElementById("add").onclick = () => {
-  fileInput.click();
-};
+document.getElementById("add").onclick = () => fileInput.click();
 
 document.getElementById("reset").onclick = async () => {
   if(galleryId){
