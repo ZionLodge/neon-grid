@@ -162,30 +162,46 @@ fileInput.onchange = async () => {
 /* ===== COPY LINK (iPhone & fallback) ===== */
 document.getElementById("share").onclick = async () => {
   try {
-    await navigator.clipboard.writeText(location.href);
-  } catch {
-    const textarea = document.createElement("textarea");
-    textarea.value = location.href;
-    document.body.appendChild(textarea);
-    textarea.select();
-    document.execCommand("copy");
-    document.body.removeChild(textarea);
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(location.href);
+    } else {
+      const textarea = document.createElement("textarea");
+      textarea.value = location.href;
+      textarea.style.position = "fixed";  
+      textarea.style.top = "-9999px";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    }
+    const btn = document.getElementById("share");
+    btn.textContent = "Link copiat ✅";
+    setTimeout(()=>btn.textContent="COPY LINK",1500);
+  } catch (err) {
+    alert("Nu s-a putut copia link-ul. Copiază manual: " + location.href);
   }
-  const btn = document.getElementById("share");
-  btn.textContent = "Link copiat ✅";
-  setTimeout(()=>btn.textContent="COPY LINK",1500);
 };
 
 /* ===== ADD BUTTON ===== */
-document.getElementById("add").onclick = () => fileInput.click();
+document.getElementById("add").onclick = () => {
+  if(!galleryId){
+    alert("Gallery nu există. Dă RESET ca să creezi unul.");
+    return;
+  }
+  fileInput.click();
+};
 
 /* ===== RESET BUTTON ===== */
 document.getElementById("reset").onclick = async () => {
-  if(!galleryId) return;
-  await supabase.from("galleries").delete().eq("id", galleryId);
+  if(galleryId){
+    await supabase.from("galleries").delete().eq("id", galleryId);
+  }
   images = [];
-  galleryId = null;
-  history.replaceState({}, "", location.pathname);
+  // creează gallery gol ca să poți da ADD imediat
+  const { data } = await supabase.from("galleries").insert({ images }).select().single();
+  galleryId = data.id;
+  history.replaceState({}, "", "?id=" + galleryId);
   render();
 };
 
