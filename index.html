@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Neon Share Grid</title>
+<title>Neon Supabase Gallery</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
 body {
@@ -13,14 +15,12 @@ body {
   color: white;
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
 }
-
 header {
   display: flex;
-  flex-wrap: wrap;
   gap: 10px;
+  flex-wrap: wrap;
   margin-bottom: 16px;
 }
-
 button {
   background: linear-gradient(135deg, #ff4fd8, #7df9ff);
   border: none;
@@ -29,40 +29,29 @@ button {
   font-weight: 600;
   cursor: pointer;
 }
-
 .grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
 }
-
-@media (min-width: 900px) {
-  .grid {
-    grid-template-columns: repeat(6, 1fr);
-  }
+@media (min-width: 1080px) {
+  .grid { grid-template-columns: repeat(6, 1fr); }
 }
-
 .slot {
   aspect-ratio: 1/1;
   border-radius: 18px;
   background: rgba(255,255,255,0.08);
-  position: relative;
   overflow: hidden;
+  transition: transform 0.2s;
 }
-
+.slot:hover {
+  transform: scale(1.05) rotateZ(1deg);
+}
 .slot img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
-
-.checkbox {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  transform: scale(1.4);
-}
-
 .empty {
   display: flex;
   align-items: center;
@@ -71,22 +60,6 @@ button {
   opacity: 0.4;
   cursor: pointer;
 }
-
-.modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.85);
-  display: none;
-  align-items: center;
-  justify-content: center;
-}
-
-.modal img {
-  max-width: 90vw;
-  max-height: 90vh;
-  border-radius: 20px;
-}
-input[type=file] { display: none; }
 </style>
 </head>
 
@@ -95,56 +68,49 @@ input[type=file] { display: none; }
 <header>
   <button id="add">ADD</button>
   <button id="share">COPY LINK</button>
-  <button id="download">DOWNLOAD SELECTED</button>
   <button id="reset">RESET</button>
 </header>
 
 <div class="grid" id="grid"></div>
-
 <input type="file" id="file" accept="image/*" multiple>
 
-<div class="modal" id="modal"><img id="modalImg"></div>
-
 <script>
+/* ===== SETUP SUPABASE ===== */
+const SUPABASE_URL = "https://YOUR_PROJECT.supabase.co"; // schimbă aici
+const SUPABASE_KEY = "YOUR_ANON_PUBLIC_KEY";             // schimbă aici
+
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 const grid = document.getElementById("grid");
 const fileInput = document.getElementById("file");
-const modal = document.getElementById("modal");
-const modalImg = document.getElementById("modalImg");
 
+let galleryId = new URLSearchParams(location.search).get("id");
 let images = [];
 
-function encode() {
-  return btoa(JSON.stringify(images));
+/* ===== LOAD EXISTING GALLERY ===== */
+async function loadGallery() {
+  if (!galleryId) return;
+  const { data } = await supabase
+    .from("galleries")
+    .select("images")
+    .eq("id", galleryId)
+    .single();
+
+  if (data) {
+    images = data.images;
+    render();
+  }
 }
 
-function decode() {
-  const hash = location.hash;
-  if (!hash.startsWith("#DATA=")) return;
-  try {
-    images = JSON.parse(atob(hash.replace("#DATA=", "")));
-  } catch {}
-}
-
+/* ===== RENDER GRID ===== */
 function render() {
   grid.innerHTML = "";
-  images.forEach((src, i) => {
+  images.forEach(src => {
     const slot = document.createElement("div");
     slot.className = "slot";
-
     const img = document.createElement("img");
     img.src = src;
-    img.onclick = () => {
-      modalImg.src = src;
-      modal.style.display = "flex";
-    };
-
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.className = "checkbox";
-    cb.dataset.index = i;
-
     slot.appendChild(img);
-    slot.appendChild(cb);
     grid.appendChild(slot);
   });
 
@@ -155,43 +121,62 @@ function render() {
   grid.appendChild(empty);
 }
 
-fileInput.onchange = () => {
-  [...fileInput.files].forEach(file => {
-    const r = new FileReader();
-    r.onload = e => {
-      images.push(e.target.result);
-      render();
-    };
-    r.readAsDataURL(file);
-  });
-};
+/* ===== HANDLE FILE UPLOAD ===== */
+fileInput.onchange = async () => {
+  for (const file of fileInput.files) {
+    const path = `${crypto.randomUUID()}-${file.name}`;
 
-document.getElementById("share").onclick = () => {
-  const url = location.origin + location.pathname + "#DATA=" + encode();
-  navigator.clipboard.writeText(url);
-  alert("Link copiat!");
-};
+    await supabase.storage
+      .from("images")
+      .upload(path, file);
 
-document.getElementById("download").onclick = () => {
-  document.querySelectorAll(".checkbox:checked").forEach(cb => {
-    const img = images[cb.dataset.index];
-    const a = document.createElement("a");
-    a.href = img;
-    a.target = "_blank";
-    a.click();
-  });
-};
+    const { data } = supabase.storage
+      .from("images")
+      .getPublicUrl(path);
 
-document.getElementById("reset").onclick = () => {
-  images = [];
-  location.hash = "";
+    images.push(data.publicUrl);
+  }
+
+  if (!galleryId) {
+    const { data } = await supabase
+      .from("galleries")
+      .insert({ images })
+      .select()
+      .single();
+
+    galleryId = data.id;
+    history.replaceState({}, "", "?id=" + galleryId);
+  } else {
+    await supabase
+      .from("galleries")
+      .update({ images })
+      .eq("id", galleryId);
+  }
+
   render();
 };
 
-modal.onclick = () => modal.style.display = "none";
+/* ===== COPY LINK ===== */
+document.getElementById("share").onclick = () => {
+  navigator.clipboard.writeText(location.href);
+  alert("Link copiat!");
+};
 
-decode();
-render();
+/* ===== ADD BUTTON ===== */
+document.getElementById("add").onclick = () => fileInput.click();
+
+/* ===== RESET BUTTON ===== */
+document.getElementById("reset").onclick = async () => {
+  if (!galleryId) return;
+  await supabase.from("galleries").delete().eq("id", galleryId);
+  images = [];
+  galleryId = null;
+  history.replaceState({}, "", location.pathname);
+  render();
+};
+
+/* ===== INIT ===== */
+loadGallery();
 </script>
 
 </body>
