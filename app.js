@@ -10,6 +10,7 @@ const gallery = document.getElementById('gallery');
 const fileInput = document.getElementById('fileInput');
 const modal = document.getElementById('modal');
 const modalImg = document.getElementById('modalImg');
+const modalFileInfo = document.getElementById('modalFileInfo');
 const closeModal = document.getElementById('closeModal');
 const copyLinkBtn = document.getElementById('copyLink');
 const directLink = document.getElementById('directLink');
@@ -17,6 +18,14 @@ const deleteFromModal = document.getElementById('deleteFromModal');
 const copyFeedback = document.getElementById('copyFeedback');
 
 let currentImageName = null;
+
+function getFileType(fileName) {
+  const ext = fileName.split('.').pop()?.toLowerCase() || '';
+  const imageExt = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'avif'];
+  if (imageExt.includes(ext)) return 'image';
+  if (ext === 'pdf') return 'pdf';
+  return ext || 'file';
+}
 
 async function loadImages() {
   gallery.innerHTML = '<p class="loading">Încarc imagini...</p>';
@@ -45,14 +54,25 @@ async function loadImages() {
 
     files.forEach(file => {
       if (!file.name) return;
+      const fileType = getFileType(file.name);
 
       const { data: { publicUrl } } = supabaseClient.storage.from(BUCKET).getPublicUrl(file.name);
 
       const card = document.createElement('div');
       card.className = 'card';
-      card.innerHTML = `<img src="${publicUrl}" alt="${file.name}" loading="lazy">`;
+      if (fileType === 'image') {
+        card.innerHTML = `<img src="${publicUrl}" alt="${file.name}" loading="lazy">`;
+      } else {
+        card.classList.add('file-card');
+        card.innerHTML = `
+          <div class="file-card-content">
+            <span class="file-type">${fileType.toUpperCase()}</span>
+            <span class="file-name">${file.name}</span>
+          </div>
+        `;
+      }
 
-      card.onclick = () => openModal(file.name, publicUrl);
+      card.onclick = () => openModal(file.name, publicUrl, fileType);
 
       gallery.appendChild(card);
     });
@@ -63,9 +83,18 @@ async function loadImages() {
 }
 
 // Restul funcțiilor rămân la fel, dar cu supabaseClient peste tot.
-function openModal(name, url) {
+function openModal(name, url, fileType = 'image') {
   currentImageName = name;
-  modalImg.src = url;
+  const isImage = fileType === 'image';
+
+  modalImg.src = isImage ? url : '';
+  modalImg.classList.toggle('hidden', !isImage);
+  modalFileInfo.classList.toggle('hidden', isImage);
+  if (!isImage) {
+    const label = fileType === 'pdf' ? 'Fișier PDF' : `Fișier ${fileType.toUpperCase()}`;
+    modalFileInfo.textContent = `${label}: ${name}. Apasă "Open in new tab" pentru vizualizare/download.`;
+  }
+
   directLink.href = url;
   modal.classList.remove('hidden');
   copyFeedback.classList.add('hidden');
@@ -109,7 +138,11 @@ fileInput.onchange = async (e) => {
 
     const { error } = await supabaseClient.storage
       .from(BUCKET)
-      .upload(fileName, file, { cacheControl: '3600', upsert: false });
+      .upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: file.type || undefined
+      });
 
     if (error) {
       console.error('Upload error:', error);

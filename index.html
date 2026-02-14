@@ -17,8 +17,8 @@
   </header>
 
   <div class="controls">
-    <label for="fileInput" class="btn upload-btn">ADD IMAGE</label>
-    <input type="file" id="fileInput" accept="image/*" multiple hidden>
+    <label for="fileInput" class="btn upload-btn">ADD FILE</label>
+    <input type="file" id="fileInput" accept="image/*,application/pdf,.pdf" multiple hidden>
 
     <button class="btn clean-btn" id="cleanAll">CLEAN ALL</button>
   </div>
@@ -30,6 +30,7 @@
     <div class="modal-content">
       <button class="close-modal" id="closeModal">&times;</button>
       <img id="modalImg" src="" alt="Imagine mare">
+      <p id="modalFileInfo" class="file-info hidden"></p>
       <div class="modal-actions">
         <button class="btn copy-btn" id="copyLink">Copy Link</button>
         <a id="directLink" href="#" target="_blank" class="btn open-btn">Open in new tab</a>
