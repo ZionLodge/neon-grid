@@ -20,14 +20,19 @@
   <input id="fileInput" type="file" accept="image/*" multiple hidden />
 
   <div class="actions">
-    <button id="addBtn">Add images</button>
-    <button id="deleteBtn">Delete selected</button>
-    <button id="downloadBtn">Download ZIP</button>
-    <button id="resetBtn">Clean gallery</button>
+    <button id="addBtn">ADD</button>
+    <button id="deleteBtn">DELETE</button>
+    <button id="downloadBtn">DOWNLOAD</button>
+    <button id="resetBtn">CLEAN</button>
   </div>
 
   <div id="grid" class="grid"></div>
 </main>
+
+<!-- Preview -->
+<div id="preview" class="preview hidden">
+  <img id="previewImg" />
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="app.js"></script>
