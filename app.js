@@ -1,8 +1,8 @@
 const supabaseUrl = 'https://mkrkiawrvnbugzyocxqe.supabase.co';
 const supabaseKey = 'sb_publishable_Fep-b-ylEk5mSI1kiaR6bQ_f2qBVR_t';
 
-const supabase = Supabase.createClient(supabaseUrl, supabaseKey);
-const BUCKET = 'images';  // confirmă în dashboard că este exact 'images' (lowercase)
+const sbClient = Supabase.createClient(supabaseUrl, supabaseKey);  // ← schimbat aici
+const BUCKET = 'images';
 
 const gallery = document.getElementById('gallery');
 const fileInput = document.getElementById('fileInput');
@@ -20,20 +20,16 @@ async function loadImages() {
   gallery.innerHTML = '<p class="loading">Încarc imagini...</p>';
 
   try {
-    // Încercare normală
-    let { data: files, error } = await supabase.storage
+    let { data: files, error } = await sbClient.storage  // ← sbClient în loc de supabase
       .from(BUCKET)
       .list('', { limit: 200, sortBy: { column: 'name', order: 'desc' } });
 
     if (error) throw error;
 
-    // Dacă lista e goală, așteptăm puțin și încercăm din nou (pentru propagare delay)
     if (!files || files.length === 0) {
       console.log('Lista goală la prima încercare → retry după 2 secunde...');
       await new Promise(resolve => setTimeout(resolve, 2000));
-      const retry = await supabase.storage
-        .from(BUCKET)
-        .list('', { limit: 200, sortBy: { column: 'name', order: 'desc' } });
+      const retry = await sbClient.storage.from(BUCKET).list('', { limit: 200, sortBy: { column: 'name', order: 'desc' } });
       files = retry.data || [];
     }
 
@@ -47,9 +43,7 @@ async function loadImages() {
     for (const file of files) {
       if (!file.name) continue;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from(BUCKET)
-        .getPublicUrl(file.name);
+      const { data: { publicUrl } } = sbClient.storage.from(BUCKET).getPublicUrl(file.name);
 
       const card = document.createElement('div');
       card.className = 'card';
@@ -65,6 +59,7 @@ async function loadImages() {
   }
 }
 
+// Restul funcțiilor – înlocuiește TOATE supabase cu sbClient
 function openModal(name, url) {
   currentImageName = name;
   modalImg.src = url;
@@ -86,20 +81,16 @@ copyLinkBtn.onclick = async () => {
     setTimeout(() => copyFeedback.classList.add('hidden'), 3000);
   } catch (err) {
     alert('Nu am putut copia link-ul :(');
-    console.error('Clipboard error:', err);
   }
 };
 
 deleteFromModal.onclick = async () => {
   if (!currentImageName || !confirm('Sigur ștergi imaginea?')) return;
 
-  const { error } = await supabase.storage
-    .from(BUCKET)
-    .remove([currentImageName]);
+  const { error } = await sbClient.storage.from(BUCKET).remove([currentImageName]);
 
   if (error) {
     alert('Eroare la ștergere: ' + error.message);
-    console.error('Delete error:', error);
   } else {
     modal.classList.add('hidden');
     loadImages();
@@ -113,54 +104,36 @@ fileInput.onchange = async (e) => {
   for (const file of files) {
     const fileName = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
 
-    try {
-      const { data, error } = await supabase.storage
-        .from(BUCKET)
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
+    const { error } = await sbClient.storage
+      .from(BUCKET)
+      .upload(fileName, file, { cacheControl: '3600', upsert: false });
 
-      if (error) {
-        console.error('Upload error pentru', file.name, ':', error);
-        alert(`Eroare upload ${file.name}: ${error.message}`);
-      } else {
-        console.log('Upload reușit:', fileName);
-      }
-    } catch (err) {
-      console.error('Excepție upload:', err);
+    if (error) {
+      console.error('Upload error:', error);
+      alert(`Eroare upload ${file.name}: ${error.message}`);
     }
   }
 
   fileInput.value = '';
-  await loadImages();  // reîncarcă grid-ul după upload
+  loadImages();
 };
 
 document.getElementById('cleanAll').onclick = async () => {
   if (!confirm('Ștergi TOATE imaginile din bucket?')) return;
 
-  try {
-    const { data: files } = await supabase.storage.from(BUCKET).list();
-    if (!files?.length) {
-      alert('Nicio imagine de șters.');
-      return;
-    }
+  const { data: files } = await sbClient.storage.from(BUCKET).list();
+  if (!files?.length) return;
 
-    const paths = files.map(f => f.name);
-    const { error } = await supabase.storage.from(BUCKET).remove(paths);
+  const paths = files.map(f => f.name);
+  const { error } = await sbClient.storage.from(BUCKET).remove(paths);
 
-    if (error) {
-      alert('Eroare la clean: ' + error.message);
-      console.error('Clean error:', error);
-    } else {
-      alert('Toate imaginile au fost șterse.');
-      loadImages();
-    }
-  } catch (err) {
-    console.error('Excepție clean:', err);
+  if (error) {
+    alert('Eroare la clean: ' + error.message);
+  } else {
+    loadImages();
   }
 };
 
-// Pornire inițială + debug log
+// Pornire
 console.log('Supabase client inițializat. Bucket:', BUCKET);
 loadImages();
