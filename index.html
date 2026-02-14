@@ -1,33 +1,45 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ro">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Neon Grid - Cyberpunk Image Uploader</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Neon Grid • Supabase Uploader</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
+
   <header>
     <h1>NEON GRID</h1>
+    <p class="subtitle">Upload • Share • View</p>
   </header>
 
-  <div class="actions">
-    <button id="addBtn">ADD</button>
-    <button id="deleteBtn">DELETE</button>
-    <button id="downloadBtn">DOWNLOAD</button>
-    <button id="resetBtn">CLEAN</button>
+  <div class="controls">
+    <label for="fileInput" class="btn upload-btn">ADD IMAGE</label>
+    <input type="file" id="fileInput" accept="image/*" multiple hidden>
+
+    <button class="btn clean-btn" id="cleanAll">CLEAN ALL</button>
   </div>
 
-  <input type="file" id="fileInput" accept="image/*" multiple hidden>
+  <div class="gallery" id="gallery"></div>
 
-  <div class="grid" id="grid"></div>
-
-  <div class="preview hidden" id="preview">
-    <img id="previewImg" src="" alt="Preview">
+  <!-- Modal pentru vizualizare mare + copy link -->
+  <div class="modal hidden" id="modal">
+    <div class="modal-content">
+      <button class="close-modal" id="closeModal">&times;</button>
+      <img id="modalImg" src="" alt="Imagine mare">
+      <div class="modal-actions">
+        <button class="btn copy-btn" id="copyLink">Copy Link</button>
+        <a id="directLink" href="#" target="_blank" class="btn open-btn">Open in new tab</a>
+        <button class="btn delete-btn" id="deleteFromModal">Delete</button>
+      </div>
+      <p id="copyFeedback" class="feedback hidden">Link copiat în clipboard!</p>
+    </div>
   </div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="app.js"></script>
 </body>
 </html>
