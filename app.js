@@ -1,5 +1,5 @@
 const supabaseUrl = 'https://mkrkiawrvnbugzyocxqe.supabase.co'          // ← schimbă cu al tău
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1rcmtpYXdydm5idWd6eW9jeHFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk1NzQ4MDAsImV4cCI6MjA1NTE1MDgwMH0.something'  // ← anon key tău
+const supabaseKey = 'sb_publishable_Fep-b-ylEk5mSI1kiaR6bQ_f2qBVR_t'  // ← anon key tău
 
 const supabase = Supabase.createClient(supabaseUrl, supabaseKey)
 const BUCKET = 'images'   // schimbă dacă e 'IMAGES' sau alt nume
