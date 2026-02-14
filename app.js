@@ -16,25 +16,45 @@ document.addEventListener("DOMContentLoaded", () => {
   const downloadBtn = document.getElementById("downloadBtn");
   const resetBtn = document.getElementById("resetBtn");
 
+  const preview = document.getElementById("preview");
+  const previewImg = document.getElementById("previewImg");
+
   let images = [];
   let selected = new Set();
+  let dragSrc = null;
 
   function render() {
     grid.innerHTML = "";
-    images.forEach(img => {
+
+    images.forEach((img, index) => {
       const slot = document.createElement("div");
       slot.className = "slot";
+      slot.draggable = true;
+
       if (selected.has(img.name)) slot.classList.add("selected");
 
       const image = document.createElement("img");
       image.src = img.url;
 
+      image.ondblclick = () => {
+        previewImg.src = img.url;
+        preview.classList.remove("hidden");
+      };
+
       slot.onclick = () => {
-        if (selected.has(img.name)) {
-          selected.delete(img.name);
-        } else {
-          selected.add(img.name);
-        }
+        selected.has(img.name)
+          ? selected.delete(img.name)
+          : selected.add(img.name);
+        render();
+      };
+
+      /* Drag & Drop */
+      slot.ondragstart = () => dragSrc = index;
+      slot.ondragover = e => e.preventDefault();
+      slot.ondrop = () => {
+        const temp = images[dragSrc];
+        images[dragSrc] = images[index];
+        images[index] = temp;
         render();
       };
 
@@ -43,16 +63,13 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  preview.onclick = () => preview.classList.add("hidden");
+
   async function loadImages() {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .storage
       .from("images")
       .list("", { limit: 100 });
-
-    if (error) {
-      console.error(error);
-      return;
-    }
 
     images = data.map(file => ({
       name: file.name,
@@ -70,37 +87,27 @@ document.addEventListener("DOMContentLoaded", () => {
   fileInput.onchange = async () => {
     for (const file of fileInput.files) {
       const name = `${Date.now()}-${file.name}`;
-
-      await supabase
-        .storage
-        .from("images")
-        .upload(name, file, { upsert: false });
+      await supabase.storage.from("images").upload(name, file);
     }
     fileInput.value = "";
     loadImages();
   };
 
   deleteBtn.onclick = async () => {
-    if (selected.size === 0) return;
-
-    await supabase
-      .storage
-      .from("images")
-      .remove([...selected]);
-
+    if (!selected.size) return;
+    await supabase.storage.from("images").remove([...selected]);
     selected.clear();
     loadImages();
   };
 
   resetBtn.onclick = async () => {
-    const names = images.map(i => i.name);
-    await supabase.storage.from("images").remove(names);
+    await supabase.storage.from("images").remove(images.map(i => i.name));
     selected.clear();
     loadImages();
   };
 
   downloadBtn.onclick = async () => {
-    if (selected.size === 0) return;
+    if (!selected.size) return;
 
     const zip = new JSZip();
     const folder = zip.folder("neon-grid");
@@ -108,13 +115,12 @@ document.addEventListener("DOMContentLoaded", () => {
     for (const img of images) {
       if (!selected.has(img.name)) continue;
       const res = await fetch(img.url);
-      const blob = await res.blob();
-      folder.file(img.name, blob);
+      folder.file(img.name, await res.blob());
     }
 
-    const content = await zip.generateAsync({ type: "blob" });
+    const blob = await zip.generateAsync({ type: "blob" });
     const a = document.createElement("a");
-    a.href = URL.createObjectURL(content);
+    a.href = URL.createObjectURL(blob);
     a.download = "gallery.zip";
     a.click();
   };
