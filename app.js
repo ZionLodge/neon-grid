@@ -1,8 +1,8 @@
 const supabaseUrl = 'https://mkrkiawrvnbugzyocxqe.supabase.co';
 const supabaseKey = 'sb_publishable_Fep-b-ylEk5mSI1kiaR6bQ_f2qBVR_t';
 
-// Folosește global-ul 'supabase' din CDN (lowercase!)
-const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+// Folosește global-ul expus de CDN prin window.supabase.
+const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
 const BUCKET = 'images';  // confirmă exact numele în dashboard
 
@@ -22,7 +22,7 @@ async function loadImages() {
   gallery.innerHTML = '<p class="loading">Încarc imagini...</p>';
 
   try {
-    let { data: files, error } = await supabase.storage
+    let { data: files, error } = await supabaseClient.storage
       .from(BUCKET)
       .list('', { limit: 200, sortBy: { column: 'name', order: 'desc' } });
 
@@ -32,7 +32,7 @@ async function loadImages() {
     if (!files || files.length === 0) {
       console.log('Lista goală → retry după 2s...');
       await new Promise(r => setTimeout(r, 2000));
-      const retryRes = await supabase.storage.from(BUCKET).list('', { limit: 200, sortBy: { column: 'name', order: 'desc' } });
+      const retryRes = await supabaseClient.storage.from(BUCKET).list('', { limit: 200, sortBy: { column: 'name', order: 'desc' } });
       files = retryRes.data || [];
     }
 
@@ -46,7 +46,7 @@ async function loadImages() {
     files.forEach(file => {
       if (!file.name) return;
 
-      const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(file.name);
+      const { data: { publicUrl } } = supabaseClient.storage.from(BUCKET).getPublicUrl(file.name);
 
       const card = document.createElement('div');
       card.className = 'card';
@@ -62,7 +62,7 @@ async function loadImages() {
   }
 }
 
-// Restul funcțiilor rămân la fel, dar cu 'supabase' lowercase peste tot
+// Restul funcțiilor rămân la fel, dar cu supabaseClient peste tot.
 function openModal(name, url) {
   currentImageName = name;
   modalImg.src = url;
@@ -90,7 +90,7 @@ copyLinkBtn.onclick = async () => {
 deleteFromModal.onclick = async () => {
   if (!currentImageName || !confirm('Ștergi?')) return;
 
-  const { error } = await supabase.storage.from(BUCKET).remove([currentImageName]);
+  const { error } = await supabaseClient.storage.from(BUCKET).remove([currentImageName]);
 
   if (error) {
     alert('Eroare ștergere: ' + error.message);
@@ -107,7 +107,7 @@ fileInput.onchange = async (e) => {
   for (const file of files) {
     const fileName = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
 
-    const { error } = await supabase.storage
+    const { error } = await supabaseClient.storage
       .from(BUCKET)
       .upload(fileName, file, { cacheControl: '3600', upsert: false });
 
@@ -126,11 +126,11 @@ fileInput.onchange = async (e) => {
 document.getElementById('cleanAll').onclick = async () => {
   if (!confirm('Ștergi TOT?')) return;
 
-  const { data: files } = await supabase.storage.from(BUCKET).list();
+  const { data: files } = await supabaseClient.storage.from(BUCKET).list();
   if (!files?.length) return;
 
   const paths = files.map(f => f.name);
-  const { error } = await supabase.storage.from(BUCKET).remove(paths);
+  const { error } = await supabaseClient.storage.from(BUCKET).remove(paths);
 
   if (error) {
     alert('Eroare clean: ' + error.message);
