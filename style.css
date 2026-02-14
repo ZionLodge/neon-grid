@@ -4,24 +4,38 @@
 
 body {
   margin: 0;
-  background: radial-gradient(circle at top, #140018, #000);
+  background: radial-gradient(circle at top, #18001f, #000);
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
   color: white;
 }
 
+/* ===== HEADER ===== */
 header {
   text-align: center;
-  padding: 16px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  color: #ff4fd8;
+  padding: 20px;
 }
 
+header h1 {
+  font-size: 32px;
+  letter-spacing: 3px;
+  background: linear-gradient(120deg, #ff4fd8, #00ffff, #ffee00);
+  background-size: 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: flow 4s linear infinite;
+}
+
+@keyframes flow {
+  from { background-position: 0%; }
+  to { background-position: 200%; }
+}
+
+/* ===== ACTIONS ===== */
 .actions {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   justify-content: center;
-  padding: 10px;
+  padding: 12px;
   flex-wrap: wrap;
 }
 
@@ -29,30 +43,55 @@ button {
   background: #111;
   color: #0ff;
   border: 1px solid #0ff;
-  padding: 10px 14px;
-  border-radius: 12px;
+  padding: 12px 18px;
+  border-radius: 14px;
   cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+button::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent, rgba(255,255,255,0.25), transparent);
+  transform: translateX(-100%);
+}
+
+button:hover::after {
+  transform: translateX(100%);
+  transition: transform 0.6s;
 }
 
 button:hover {
-  box-shadow: 0 0 12px #0ff;
+  box-shadow: 0 0 18px #0ff;
 }
 
+/* ===== GRID ===== */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-  gap: 12px;
-  padding: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 18px;
+  padding: 26px;
 }
 
+/* ===== SLOT ===== */
 .slot {
   position: relative;
-  aspect-ratio: 1/1;
-  border-radius: 16px;
+  aspect-ratio: 1 / 1;
+  border-radius: 18px;
   overflow: hidden;
   background: rgba(255,255,255,0.05);
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.15);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.slot:hover {
+  transform: scale(1.06) rotate(0.6deg);
+  box-shadow:
+    0 0 22px #ff4fd8,
+    0 0 44px rgba(0,255,255,0.4);
 }
 
 .slot img {
@@ -62,5 +101,28 @@ button:hover {
 }
 
 .slot.selected {
-  outline: 3px solid #ff0;
+  outline: 3px solid #ffee00;
+}
+
+/* ===== PREVIEW ===== */
+.preview {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.preview img {
+  max-width: 90vw;
+  max-height: 90vh;
+  border-radius: 20px;
+  box-shadow: 0 0 40px #ff4fd8;
+}
+
+.hidden {
+  display: none;
 }
